@@ -1,3 +1,23 @@
+---
+title: "Most damaging events in terms of human and economic damage."
+author: "luiyusen97"
+date: "7/22/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Abstract
+
+This short analysis finds out the overall most damaging events in terms of population and economic damage, in order to best focus preventive measures.
+
+## Data Processing
+
+Data was downloaded from the links in the url vector. The first URL is the one containing the raw data. No initial transformations were made.
+
+```{r data_processing}
 # loading packages
 library(tidyverse)
 
@@ -20,7 +40,13 @@ if (!file.exists("rawdata_faq.pdf")){
 
 #read data
 stormdata <- read.csv("rawdata.csv.bz2")
+```
 
+## Population damage
+
+Population damage was taken from the FATALITIES and INJURIES columns of the raw data. Sums were taken of both damage types of each event type, as in figure 2. Negligible event types are those that have overall caused very low population damage in terms of fatalities and injuries. The cut-off point of 1000 was enough to narrow the list of most damaging events down to 14. Figure 1 below shows the 14 most damaging event types.
+
+```{r pop_dmg}
 # harmful wrt population hp FATALITIES/INJURIES
 
 # Calculate the sums of fatalities and injuries for each event type
@@ -28,23 +54,6 @@ stormdata_orderedevtype <- group_by(stormdata, EVTYPE, .drop = FALSE)
 sum_fatalities <- summarise(stormdata_orderedevtype, sum_fat = sum(FATALITIES))
 sum_injuries <- summarise(stormdata_orderedevtype, sum_inj = sum(INJURIES))
 sum_popdmg <- merge(sum_fatalities, sum_injuries, by = "EVTYPE")
-# i <- 1
-# while (TRUE){
-#     pat <- sum_popdmg[i, 1]
-#     match_indices <- agrep(pattern = pat,
-#                            x = sum_popdmg[ , 1],
-#                            ignore.case = TRUE)
-#     match_values <- sum_popdmg[match_indices, ]
-#     new_value <- list(match_values[1, 1],
-#                       sum(match_values[ , 2]),
-#                       sum(match_values[ , 3]))
-#     sum_popdmg[i, 2] <- new_value[2] ; sum_popdmg[i, 3] <- new_value[3]
-#     sum_popdmg <- sum_popdmg[-(match_indices[2:length(match_indices)]), ]
-#     i <- i + 1
-#     if (i > nrow(sum_popdmg)){
-#         break
-#     }
-# }
 
 # Remove data entries with negligible values to narrow down selection of event 
 # to the most damaging
@@ -74,9 +83,20 @@ sum_popdmg_plot <- ggplot(sum_popdmg) +
     scale_color_manual(labels = c("Fatalities", "Injuries"),
                        values = c("red", "cadetblue3"))
 print(sum_popdmg_plot)
-ggsave("pop_dmg.png", plot = sum_popdmg_plot, device = png())
-dev.off()
+```
 
+
+### Figure 2
+```{r figure2}
+print(sum_popdmg)
+```
+
+This is the processed sum data for population damage.
+
+## Economic damage
+The data measured economic damage in terms of the value of property and crops damaged and lost. To find the overall most economically damaging event types, I summed up the damage done over the years for each event type, as in Figure 4. 10000 was the cut-off point to ignore negligible damage values and reduce the number of relevant event types to 31. Figure 3 plots out the damage values and the greatest values are circled in black.
+
+```{r econ_dmg}
 # economic damage
 # calculate the sums of property and economic damage for each event type
 sum_propdmg <- summarise(stormdata_orderedevtype, sum_propdmg = sum(PROPDMG))
@@ -109,5 +129,17 @@ sum_econdmg_plot <- ggplot(sum_econdmg) +
     scale_color_manual(labels = c("Property damage", "Crop damage"),
                        values = c("red", "cadetblue3"))
 print(sum_econdmg_plot)
-ggsave("econ_dmg.png", plot = sum_econdmg_plot, device = png())
-dev.off()
+```
+
+
+### Figure 4
+```{r figure4}
+print(sum_econdmg)
+```
+
+This is the processed sum data for economic damage.
+
+## Results
+
+The event type with the greatest overall fatalities and injuries over the years is the `r max_fat[ , 1, drop = TRUE]` with overall fatality numbers of `r max_fat[ , 2, drop = TRUE]` and `r max_fat[ , 3, drop = TRUE]` injuries.
+The greatest property damage of `r max_propdmg[ , 2, drop = TRUE]` is caused by the event type of `r max_propdmg[ , 1, drop = TRUE]`, while the greatest crop damage of `r max_cropdmg[ , 3, drop = TRUE]` is caused by the event type `r max_cropdmg[ , 1, drop = TRUE]`.
