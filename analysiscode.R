@@ -79,6 +79,66 @@ dev.off()
 
 # economic damage
 # calculate the sums of property and economic damage for each event type
+exponentials_numeric <- as.character(1:9)
+exponentials_string <- c(" ", "H", "K", rep(" ", 2), "M", rep(" ", 2), "B")
+for (i in nrow(stormdata_orderedevtype)){
+    if (stormdata_orderedevtype[i, "PROPDMGEXP"] %in% letters){
+        print(stormdata_orderedevtype[i, "PROPDMGEXP"])
+        stormdata_orderedevtype[i, "PROPDMGEXP"] <- toupper(stormdata_orderedevtype[i, "PROPDMGEXP"])
+    }
+}
+# convert_to_exponent <- function(value, exponent){
+#     exponentials_numeric <- as.character(1:9)
+#     exponentials_string <- c(" ", "H", "K", rep(" ", 2), "M", rep(" ", 2), "B")
+#     if (exponent[[1]] %in% exponentials_numeric){
+#         exponent <- which(exponentials_numeric == exponent)
+#     } else if (exponent[[1]] %in% LETTERS){
+#         exponent <- which(exponentials_string == exponent)
+#     } else {
+#         exponent <- 0L
+#     }
+#     value <- value * (10^exponent)
+#     return(value)
+# }
+# convert_to_exponent <- function(value, exponent){
+#     exponentials_numeric <- as.character(1:9)
+#     exponentials_string <- c(" ", "H", "K", rep(" ", 2), "M", rep(" ", 2), "B")
+#     if (exponent[[1]] %in% exponentials_numeric){
+#         exponent <- which(exponentials_numeric == exponent[[1]])
+#     } else if (exponent[[1]] %in% LETTERS){
+#         exponent <- which(exponentials_string == exponent[[1]])
+#     } else {
+#         exponent <- 0L
+#     }
+#     value <- value[[1]] * (10^exponent)
+#     return(value)
+#     }
+#
+# for (i in nrow(stormdata_orderedevtype)){
+#     stormdata_orderedevtype[i, "PROPDMG"] <- convert_to_exponent(stormdata_orderedevtype[i, "PROPDMG"],
+#                                                                  stormdata_orderedevtype[i, "PROPDMGEXP"])
+#     stormdata_orderedevtype[i, "CROPDMG"] <- convert_to_exponent(stormdata_orderedevtype[i, "CROPDMG"],
+#                                                                  stormdata_orderedevtype[i, "CROPDMGEXP"])
+# }
+# convert the PROPDMGEXP column to numeric
+convert_to_exponent <- function(exponent_chr){
+    exponentials_numeric <- as.character(1:9)
+    exponentials_string <- c(" ", "H", "K", rep(" ", 2), "M", rep(" ", 2), "B")
+    if (exponent_chr[[1]] %in% exponentials_numeric){
+        exponent <- which(exponentials_numeric == exponent_chr[[1]])
+    } else if (exponent_chr[[1]] %in% LETTERS){
+        exponent <- which(exponentials_string == exponent_chr[[1]])
+    } else {
+        exponent <- 0L
+    }
+    return(exponent)
+}
+# multiply the property and crop damage columns by 10^exponents
+stormdata_orderedevtype <- mutate(stormdata_orderedevtype, PROPDMGEXP = convert_to_exponent(PROPDMGEXP))
+stormdata_orderedevtype <- mutate(stormdata_orderedevtype, PROPDMG = PROPDMG * (10^PROPDMGEXP))
+stormdata_orderedevtype <- mutate(stormdata_orderedevtype, CROPDMGEXP = convert_to_exponent(CROPDMGEXP))
+stormdata_orderedevtype <- mutate(stormdata_orderedevtype, CROPDMG = CROPDMG * (10^CROPDMGEXP))
+
 sum_propdmg <- summarise(stormdata_orderedevtype, sum_propdmg = sum(PROPDMG))
 sum_cropdmg <- summarise(stormdata_orderedevtype, sum_cropdmg = sum(CROPDMG))
 sum_econdmg <- merge(sum_propdmg, sum_cropdmg, by = "EVTYPE")
@@ -86,11 +146,12 @@ sum_econdmg <- merge(sum_propdmg, sum_cropdmg, by = "EVTYPE")
 # remove values that are negligible. Keep the most damaging events
 empty_indices <- vector(mode = "numeric")
 for (i in 1:nrow(sum_econdmg)){
-    if ((sum_econdmg[i, 2] < 10000) & (sum_econdmg[i, 3] < 10000)){
+    if ((sum_econdmg[i, 2] < 400000) & (sum_econdmg[i, 3] < 400000)){
         empty_indices <- c(empty_indices, i)
     }
 }
 sum_econdmg <- sum_econdmg[-empty_indices, ]
+
 sum_econdmg <- mutate(sum_econdmg, eventtype = 1:nrow(sum_econdmg))
 
 # find the greatest damage values for both property and crop damage
@@ -104,10 +165,20 @@ sum_econdmg_plot <- ggplot(sum_econdmg) +
     geom_point(mapping = aes(x = eventtype, y = sum_cropdmg, colour = "blue")) +
     geom_point(shape = 1, mapping = aes(x = max_propdmg[ , 4], y = max_propdmg[ , 2])) +
     geom_point(shape = 1, mapping = aes(x = max_cropdmg[ , 4], y = max_cropdmg[ , 3])) +
-    labs(title = "Figure 3: Property and crop damage by event type",
+    labs(title = "Figure 2: Property and crop damage by event type",
          x = "Event type", y = "Property/Crop damage") +
     scale_color_manual(labels = c("Property damage", "Crop damage"),
                        values = c("red", "cadetblue3"))
 print(sum_econdmg_plot)
 ggsave("econ_dmg.png", plot = sum_econdmg_plot, device = png())
 dev.off()
+
+# plot only top 10 values
+sum_propdmg <- arrange(sum_econdmg, desc(sum_propdmg))[1:10, -3]
+sum_propdmg_plot <- ggplot(sum_propdmg, mapping = aes(EVTYPE, sum_propdmg)) +
+    geom_point() + ggtitle("Figure 2: Property damage by event type")
+print(sum_propdmg_plot)
+sum_cropdmg <- arrange(sum_econdmg, desc(sum_cropdmg))[1:10, -2]
+sum_cropdmg_plot <- ggplot(sum_cropdmg, mapping = aes(EVTYPE, sum_cropdmg)) +
+    geom_point() + ggtitle("Figure 3: Crop damage by event type")
+print(sum_cropdmg_plot)
