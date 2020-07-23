@@ -175,10 +175,10 @@ dev.off()
 
 # plot only top 10 values
 sum_propdmg <- arrange(sum_econdmg, desc(sum_propdmg))[1:10, -3]
-sum_propdmg_plot <- ggplot(sum_propdmg, mapping = aes(EVTYPE, sum_propdmg)) +
+sum_propdmg_plot <- ggplot(sum_propdmg, mapping = aes(EVTYPE, sum_propdmg, colour = EVTYPE)) +
     geom_point() + ggtitle("Figure 2: Property damage by event type")
 print(sum_propdmg_plot)
 sum_cropdmg <- arrange(sum_econdmg, desc(sum_cropdmg))[1:10, -2]
-sum_cropdmg_plot <- ggplot(sum_cropdmg, mapping = aes(EVTYPE, sum_cropdmg)) +
+sum_cropdmg_plot <- ggplot(sum_cropdmg, mapping = aes(EVTYPE, sum_cropdmg, colour = EVTYPE)) +
     geom_point() + ggtitle("Figure 3: Crop damage by event type")
 print(sum_cropdmg_plot)
